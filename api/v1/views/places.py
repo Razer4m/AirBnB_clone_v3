@@ -7,9 +7,11 @@ Handles all default CRUD operations for Place.
 from flask import jsonify, abort, request
 from api.v1.views import app_views
 from models import storage
-from models.city import City
-from models.user import User
 from models.place import Place
+from models.state import State
+from models.city import City
+from models.amenity import Amenity
+from models.user import User
 
 
 @app_views.route('/cities/<city_id>/places',
@@ -86,3 +88,44 @@ def update_place(place_id):
             setattr(place, key, value)
     storage.save()
     return jsonify(place.to_dict()), 200
+
+
+@app_views.route('/places_search',
+                 methods=['POST'], strict_slashes=False)
+def search_places():
+    """Retrieves all Place objects based on JSON search criteria"""
+    if not request.get_json():
+        abort(400, description="Not a JSON")
+
+    data = request.get_json()
+    state_ids = data.get('states', [])
+    city_ids = data.get('cities', [])
+    amenity_ids = data.get('amenities', [])
+
+    if not state_ids and not city_ids:
+        places = storage.all(Place).values()
+    else:
+        places = set()
+        if state_ids:
+            for state_id in state_ids:
+                state = storage.get(State, state_id)
+                if state:
+                    for city in state.cities:
+                        places.update(city.places)
+        if city_ids:
+            for city_id in city_ids:
+                city = storage.get(City, city_id)
+                if city:
+                    places.update(city.places)
+
+    if amenity_ids:
+        filtered_places = []
+        for place in places:
+            if all(
+                storage.get(Amenity, amenity_id) in place.amenities
+                for amenity_id in amenity_ids
+            ):
+                filtered_places.append(place)
+        places = filtered_places
+
+    return jsonify([place.to_dict() for place in places])
