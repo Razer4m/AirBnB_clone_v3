@@ -1,5 +1,9 @@
 #!/usr/bin/python3
-"""create blueprint"""
+"""
+Initialization file for the views module in the AirBnB clone API.
+Sets up the blueprint for API routes.
+"""
+
 from flask import Blueprint
 
 app_views = Blueprint('app_views', __name__, url_prefix='/api/v1')
